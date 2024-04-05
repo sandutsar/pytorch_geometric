@@ -1,25 +1,30 @@
 import os
 
 import torch
-import torch.nn.functional as F
-from torch.nn import Sequential, Linear, ReLU, BatchNorm1d as BatchNorm
-import torch.multiprocessing as mp
 import torch.distributed as dist
+import torch.multiprocessing as mp
+import torch.nn.functional as F
+from ogb.graphproppred import Evaluator
+from ogb.graphproppred import PygGraphPropPredDataset as Dataset
+from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
+from torch.nn import BatchNorm1d as BatchNorm
+from torch.nn import Linear, ReLU, Sequential
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data.distributed import DistributedSampler
 
-from torch_geometric.nn import GINEConv, global_mean_pool
-from torch_geometric.data import DataLoader
 import torch_geometric.transforms as T
+from torch_geometric.loader import DataLoader
+from torch_geometric.nn import GINEConv, global_mean_pool
+from torch_geometric.typing import WITH_TORCH_SPARSE
 
-from ogb.graphproppred import PygGraphPropPredDataset as Dataset, Evaluator
-from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
+if not WITH_TORCH_SPARSE:
+    quit("This example requires 'torch-sparse'")
 
 
 class GIN(torch.nn.Module):
     def __init__(self, hidden_channels, out_channels, num_layers=3,
                  dropout=0.5):
-        super(GIN, self).__init__()
+        super().__init__()
 
         self.dropout = dropout
 
@@ -59,7 +64,8 @@ def run(rank, world_size: int, dataset_name: str, root: str):
     os.environ['MASTER_PORT'] = '12355'
     dist.init_process_group('nccl', rank=rank, world_size=world_size)
 
-    dataset = Dataset(dataset_name, root, pre_transform=T.ToSparseTensor())
+    dataset = Dataset(dataset_name, root,
+                      pre_transform=T.ToSparseTensor(attr='edge_attr'))
     split_idx = dataset.get_idx_split()
     evaluator = Evaluator(dataset_name)
 
@@ -82,7 +88,7 @@ def run(rank, world_size: int, dataset_name: str, root: str):
     for epoch in range(1, 51):
         model.train()
 
-        total_loss = 0
+        total_loss = torch.zeros(2).to(rank)
         for data in train_loader:
             data = data.to(rank)
             optimizer.zero_grad()
@@ -90,10 +96,11 @@ def run(rank, world_size: int, dataset_name: str, root: str):
             loss = criterion(logits, data.y.to(torch.float))
             loss.backward()
             optimizer.step()
-            total_loss += float(loss) * logits.size(0)
-        loss = total_loss / len(train_loader.dataset)
+            total_loss[0] += float(loss) * logits.size(0)
+            total_loss[1] += data.num_graphs
 
-        dist.barrier()
+        dist.all_reduce(total_loss, op=dist.ReduceOp.SUM)
+        loss = float(total_loss[0] / total_loss[1])
 
         if rank == 0:  # We evaluate on a single GPU for now.
             model.eval()
@@ -133,7 +140,8 @@ if __name__ == '__main__':
     root = '../../data/OGB'
 
     # Download and process the dataset on main process.
-    Dataset(dataset_name, root, pre_transform=T.ToSparseTensor())
+    Dataset(dataset_name, root,
+            pre_transform=T.ToSparseTensor(attr='edge_attr'))
 
     world_size = torch.cuda.device_count()
     print('Let\'s use', world_size, 'GPUs!')

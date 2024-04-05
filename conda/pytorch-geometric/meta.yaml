@@ -1,34 +1,30 @@
 package:
   name: pytorch-geometric
-  version: 1.7.2
+  version: 2.5.2
 
 source:
-  path: ../..
+  url: https://files.pythonhosted.org/packages/2b/52/e6d298d328858aaebf91ca78d81195e3ccaa99ba3b33b0ffc0af5ec0c86d/torch_geometric-2.5.2.tar.gz
 
 requirements:
   host:
     - pip
+    - flit-core
     - python {{ environ.get('PYTHON_VERSION') }}
 
-  run:
   run:
     - python {{ environ.get('PYTHON_VERSION') }}
     - {{ environ.get('CONDA_PYTORCH_CONSTRAINT') }}
     - {{ environ.get('CONDA_CUDATOOLKIT_CONSTRAINT') }}
-    - pytorch-scatter
-    - pytorch-sparse
-    - pytorch-cluster
-    - pytorch-spline-conv
-    - networkx>=2.4
+    - psutil
+    - fsspec
     - tqdm
     - jinja2
     - pyparsing
-    - scikit-learn
-    - python-louvain
-    - googledrivedownloader
-    - pandas
-    - requests
     - numpy
+    - scipy
+    - aiohttp
+    - requests
+    - scikit-learn
 
 build:
   string: py{{ environ.get('PYTHON_VERSION').replace('.', '') }}_torch_{{ environ['TORCH_VERSION'] }}_{{ environ['CUDA_VERSION'] }}
@@ -36,10 +32,6 @@ build:
 
 test:
   imports:
-    - torch_scatter
-    - torch_sparse
-    - torch_cluster
-    - torch_spline_conv
     - torch_geometric
     - torch_geometric.nn
     - torch_geometric.data
@@ -48,6 +40,6 @@ test:
     - torch_geometric.transforms
 
 about:
-  home: https://github.com/rusty1s/pytorch_geometric
+  home: https://github.com/pyg-team/pytorch_geometric
   license: MIT
-  summary: Geometric Deep Learning Extension Library for PyTorch
+  summary: Graph Neural Network Library for PyTorch

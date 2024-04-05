@@ -1,10 +1,19 @@
-import torch
 import scipy.spatial
+import torch
+
+from torch_geometric.data import Data
+from torch_geometric.data.datapipes import functional_transform
+from torch_geometric.transforms import BaseTransform
 
 
-class Delaunay(object):
-    r"""Computes the delaunay triangulation of a set of points."""
-    def __call__(self, data):
+@functional_transform('delaunay')
+class Delaunay(BaseTransform):
+    r"""Computes the delaunay triangulation of a set of points
+    (functional name: :obj:`delaunay`).
+    """
+    def forward(self, data: Data) -> Data:
+        assert data.pos is not None
+
         if data.pos.size(0) < 2:
             data.edge_index = torch.tensor([], dtype=torch.long,
                                            device=data.pos.device).view(2, 0)
@@ -22,6 +31,3 @@ class Delaunay(object):
             data.face = face.t().contiguous().to(data.pos.device, torch.long)
 
         return data
-
-    def __repr__(self):
-        return '{}()'.format(self.__class__.__name__)

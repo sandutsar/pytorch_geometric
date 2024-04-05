@@ -1,9 +1,15 @@
 import torch
 import torch.nn.functional as F
 
+from torch_geometric.data import Data
+from torch_geometric.data.datapipes import functional_transform
+from torch_geometric.transforms import BaseTransform
 
-class NormalizeRotation(object):
-    r"""Rotates all points according to the eigenvectors of the point cloud.
+
+@functional_transform('normalize_rotation')
+class NormalizeRotation(BaseTransform):
+    r"""Rotates all points according to the eigenvectors of the point cloud
+    (functional name: :obj:`normalize_rotation`).
     If the data additionally holds normals saved in :obj:`data.normal`, these
     will be rotated accordingly.
 
@@ -14,11 +20,12 @@ class NormalizeRotation(object):
         sort (bool, optional): If set to :obj:`True`, will sort eigenvectors
             according to their eigenvalues. (default: :obj:`False`)
     """
-    def __init__(self, max_points: int = -1, sort: bool = False):
+    def __init__(self, max_points: int = -1, sort: bool = False) -> None:
         self.max_points = max_points
         self.sort = sort
 
-    def __call__(self, data):
+    def forward(self, data: Data) -> Data:
+        assert data.pos is not None
         pos = data.pos
 
         if self.max_points > 0 and pos.size(0) > self.max_points:
@@ -27,7 +34,8 @@ class NormalizeRotation(object):
 
         pos = pos - pos.mean(dim=0, keepdim=True)
         C = torch.matmul(pos.t(), pos)
-        e, v = torch.eig(C, eigenvectors=True)  # v[:,j] is j-th eigenvector
+        e, v = torch.linalg.eig(C)  # v[:,j] is j-th eigenvector
+        e, v = torch.view_as_real(e), v.real
 
         if self.sort:
             indices = e[:, 0].argsort(descending=True)
@@ -39,6 +47,3 @@ class NormalizeRotation(object):
             data.normal = F.normalize(torch.matmul(data.normal, v))
 
         return data
-
-    def __repr__(self):
-        return '{}()'.format(self.__class__.__name__)

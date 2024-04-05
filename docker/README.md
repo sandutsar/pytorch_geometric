@@ -1,18 +1,17 @@
 # Docker
 
-You can run PyTorch Geometric with CUDA 10.1 inside a docker image.
-The creation of [our dockerfile](https://github.com/rusty1s/pytorch_geometric/blob/master/docker/Dockerfile) refers to the dockerfiles provided by [NVIDIA](https://gitlab.com/nvidia/cuda/tree/ubuntu18.04) and [PyTorch](https://github.com/anibali/docker-pytorch).
+You can run PyG with CUDA 10.1 inside a docker image.
+The creation of [our dockerfile](https://github.com/pyg-team/pytorch_geometric/blob/master/docker/Dockerfile) refers to the dockerfiles provided by [NVIDIA](https://gitlab.com/nvidia/cuda/tree/ubuntu18.04) and [PyTorch](https://github.com/anibali/docker-pytorch).
 
 1. Download the dockerfile to your host server.
-2. `$ docker build -t "custom image name"`
-3. `$ docker run --rm -it --init --runtime=nvidia --ipc=host --network=host --volume=$PWD:/app -e NVIDIA_VISIBLE_DEVICES=0 "custom image name" /bin/bash`
+1. `$ docker build -t "custom image name"`
+1. `$ docker run --rm -it --init --runtime=nvidia --ipc=host --network=host --volume=$PWD:/app -e NVIDIA_VISIBLE_DEVICES=0 "custom image name" /bin/bash`
 
 If you encounter any problems, please feel free to contact <liangshengwen@ict.ac.cn>.
 
-
 # Singularity
 
-You can run PyTorch Geometric inside a singularity image. An example singularity file can be found in this folder.
+You can run PyG inside a singularity image. An example singularity file can be found in this folder.
 
 You might have to modify the script; depending on your needs, modify the following:
 
@@ -33,7 +32,7 @@ To build the container, run
 then wait. Once finished, you can run the GAT example in the folder you built the image in by calling
 
 ```
-wget https://raw.githubusercontent.com/rusty1s/pytorch_geometric/master/examples/gat.py
+wget https://raw.githubusercontent.com/pyg-team/pytorch_geometric/master/examples/gat.py
 ```
 
 (to download the sample),
@@ -49,4 +48,5 @@ to run on the CPU, or
 ```
 singularity exec --nv geometric.sif python3 gat.py
 ```
+
 to run on the GPU.

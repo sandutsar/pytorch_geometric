@@ -2,13 +2,18 @@ import os.path as osp
 
 import torch
 import torch.nn.functional as F
-from torch_geometric.datasets import Planetoid
+
 import torch_geometric.transforms as T
+from torch_geometric.datasets import Planetoid
 from torch_geometric.nn import SplineConv
+from torch_geometric.typing import WITH_TORCH_SPLINE_CONV
+
+if not WITH_TORCH_SPLINE_CONV:
+    quit("This example requires 'torch-spline-conv'")
 
 dataset = 'Cora'
 transform = T.Compose([
-    T.AddTrainValTestMask('train_rest', num_val=500, num_test=500),
+    T.RandomNodeSplit(num_val=500, num_test=500),
     T.TargetIndegree(),
 ])
 path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', dataset)
@@ -18,7 +23,7 @@ data = dataset[0]
 
 class Net(torch.nn.Module):
     def __init__(self):
-        super(Net, self).__init__()
+        super().__init__()
         self.conv1 = SplineConv(dataset.num_features, 16, dim=1, kernel_size=2)
         self.conv2 = SplineConv(16, dataset.num_classes, dim=1, kernel_size=2)
 
@@ -43,6 +48,7 @@ def train():
     optimizer.step()
 
 
+@torch.no_grad()
 def test():
     model.eval()
     log_probs, accs = model(), []
@@ -55,5 +61,5 @@ def test():
 
 for epoch in range(1, 201):
     train()
-    log = 'Epoch: {:03d}, Train: {:.4f}, Test: {:.4f}'
-    print(log.format(epoch, *test()))
+    train_acc, test_acc = test()
+    print(f'Epoch: {epoch:03d}, Train: {train_acc:.4f}, Test: {test_acc:.4f}')
